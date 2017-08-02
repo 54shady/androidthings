@@ -1,4 +1,8 @@
-# JNI
+# Android核心
+
+## Binder系统
+
+[Android Binder系统分析](./binder)
 
 ## JNI原理
 
@@ -40,7 +44,7 @@ JAVA里面调用System.loadLibrary会导致C库里的JNI_OnLoad函数被调用
 6. android应用程序通过getService获得服务接口
 7. 应用程序通过获得的服务接口来调用本地方法从而操作底层硬件
 
-# Android中JNI调用HAL
+## Android中JNI调用HAL
 
 JNI向上提供本地函数,向下加载HAL层库文件并调用HAL层函数
 
@@ -54,7 +58,7 @@ JNI和HAL层代码都是使用C/C++编写的,JNI调用HAL层库文件本质就�
 
 android中将这个动态库编程封装为hw_get_module
 
-## JNI怎么怎么使用HAL
+### JNI怎么怎么使用HAL
 
 调用hw_get_module获得一个hw_module_t结构体
 
@@ -77,7 +81,7 @@ android中将这个动态库编程封装为hw_get_module
 		int (*led_ctrl)(int which, int status);
 	};
 
-## HAL层怎么写
+### HAL层怎么写
 
 实现一个名为HMI的hw_module_t结构体
 
