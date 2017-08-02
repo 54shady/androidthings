@@ -102,6 +102,83 @@ int hello_service_handler(struct binder_state *bs,
     return 0;
 }
 
+void saygoodbye(void)
+{
+	static int cnt = 0;
+	fprintf(stderr, "say goodbye : %d\n", cnt++);
+}
+
+int saygoodbye_to(char *name)
+{
+	static int cnt = 0;
+	fprintf(stderr, "say goodbye to %s : %d\n", name, cnt++);
+	return cnt;
+}
+
+int goodbye_service_handler(struct binder_state *bs,
+                   struct binder_transaction_data *txn,
+                   struct binder_io *msg,
+                   struct binder_io *reply)
+{
+    uint16_t *s;
+	char name[512];
+    size_t len;
+    uint32_t handle;
+    uint32_t strict_policy;
+	int i;
+
+    // Equivalent to Parcel::enforceInterface(), reading the RPC
+    // header with the strict mode policy mask and the interface name.
+    // Note that we ignore the strict_policy and don't propagate it
+    // further (since we do no outbound RPCs anyway).
+    strict_policy = bio_get_uint32(msg);
+
+    switch(txn->code) {
+		case GOODBYE_SVR_CMD_SAYGOODBYE:
+			saygoodbye();
+			return 0;
+
+		case GOODBYE_SVR_CMD_SAYGOODBYE_TO:
+			s = bio_get_string16(msg, &len);
+			if (s == NULL) {
+				return -1;
+			}
+			for (i = 0; i < len; i++)
+				name[i] = s[i];
+			name[i] = '\0';
+
+			i = saygoodbye_to(name);
+			bio_put_uint32(reply, i);
+
+			break;
+
+		default:
+			fprintf(stderr, "unknown code %d\n", txn->code);
+			return -1;
+    }
+
+    return 0;
+}
+
+/* 根据txn里target ptr判断调用哪个服务 */
+int test_server_handler(struct binder_state *bs,
+                   struct binder_transaction_data *txn,
+                   struct binder_io *msg,
+                   struct binder_io *reply)
+{
+	int (*handler)(struct binder_state *bs,
+                   struct binder_transaction_data *txn,
+                   struct binder_io *msg,
+                   struct binder_io *reply);
+
+	handler = (int (*)(struct binder_state *bs,
+                   struct binder_transaction_data *txn,
+                   struct binder_io *msg,
+                   struct binder_io *reply))txn->target.ptr;
+
+	return handler(bs, txn, msg, reply);
+}
+
 int main(int argc, char **argv)
 {
     int fd;
@@ -117,13 +194,19 @@ int main(int argc, char **argv)
     }
 
 	/* add hello service to service manager */
-	ret = svcmgr_publish(bs, target, "hello", (void *)123);
+	ret = svcmgr_publish(bs, target, "hello", hello_service_handler);
     if (ret) {
         fprintf(stderr, "failed to publish hello service\n");
         return -1;
     }
 
-    binder_loop(bs, hello_service_handler);
+	/* add goodbye service to service manager */
+	ret = svcmgr_publish(bs, target, "goodbye", goodbye_service_handler);
+    if (ret) {
+        fprintf(stderr, "failed to publish goodbye service\n");
+    }
+
+    binder_loop(bs, test_server_handler);
 
     return 0;
 }
