@@ -116,3 +116,45 @@ android中将这个动态库编程封装为hw_get_module
 或者直接在编译环境执行
 
 	java -jar out/host/linux-x86/framework/signapk.jar build/target/product/security/platform.x509.pem build/target/product/security/platform.pk8 input.apk output.apk
+
+## userdata image
+
+查看分区中userdata大小,这个应该可以通过分区表来决定,在编译的时候获取到
+
+	cat /proc/partitions
+
+	major minor  #blocks  name
+	254        0     520912 zram0
+	179        0   15388672 mmcblk0
+	179        1       4096 mmcblk0p1
+	179        2       4096 mmcblk0p2
+	179        3      65536 mmcblk0p3
+	179        4      65536 mmcblk0p4
+	179        5      20480 mmcblk0p5
+	179        6     614400 mmcblk0p6
+	179        7       4096 mmcblk0p7
+	179        8    1089536 mmcblk0p8
+	179        9      16384 mmcblk0p9
+	179       10    1048576 mmcblk0p10
+	179       11      65536 mmcblk0p11
+	179       12       4096 mmcblk0p12
+	179       13       4096 mmcblk0p13
+	179       14      16384 mmcblk0p14
+	179       15   12357632 mmcblk0p15
+	179       32       4096 mmcblk0rpmb
+
+其中userdata分区对应关系如下
+
+	lrwxrwxrwx root     root              2013-01-23 17:59 userdata -> /dev/block/mmcblk0p15
+
+mmcblk0即emmc的容量(单位kb)
+
+	12357632 * 1024 = 12654215168
+
+修改device/rockchip/rk3288/BoardConfig.mk里添加如下
+
+	BOARD_USERDATAIMAGE_PARTITION_SIZE=12654215168
+
+编译userdata
+
+	make userdataimage
