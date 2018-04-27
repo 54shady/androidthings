@@ -188,3 +188,30 @@ PC机上操作
 执行[compare-bootcharts.py](./compare-bootcharts.py)脚本,得到对比结果,其中添加一个名为user_specify_process的进程
 
 	$ ./compare-bootcharts.py base_bootchart_dir exp_bootchart_dir
+
+## KeyEvent and KeyLayout
+
+内核中KeyLayout文件(device/rockchip/common/rk29-keypad.kl)内容如下
+
+	key 59    MENU
+	key 102   HOME
+	key 114   VOLUME_DOWN
+	key 115   VOLUME_UP
+	key 116   POWER
+	key 143   WAKEUP
+	key 158   BACK
+	key 212   CAMERA
+	key 217   SEARCH
+
+获取按键事件值(0x74对应的116)POWER
+
+	getevent  /dev/input/event3
+
+	0001 0074 00000001
+	0000 0000 00000000
+	0001 0074 00000000
+	0000 0000 00000000
+
+内核中POWER对应的android的键值KEYCODE_POWER
+
+	input  keyevent KEYCODE_POWER        //26
