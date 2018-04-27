@@ -158,3 +158,33 @@ mmcblk0即emmc的容量(单位kb)
 编译userdata
 
 	make userdataimage
+
+## BootChart
+
+### 制作bootchart
+
+[参考文章 Android bootchart的使用](http://blog.csdn.net/qqxiaoqiang1573/article/details/56839031)
+
+设备上操作
+
+	echo 120 > /data/bootchart/start
+	tar -czf bootchart.tgz header proc_stat.log proc_ps.log proc_diskstats.log kernel_pacct
+
+PC机上操作
+
+	bootchart bootchart.tgz
+
+### 比较两次开机bootchart
+
+将前后两次bootchart.tgz拷贝到boot_bootchart_dir和exp_bootchart_dir目录下
+
+	ls base_bootchart_dir exp_bootchart_dir
+	base_bootchart_dir:
+	bootchart.tgz
+
+	exp_bootchart_dir:
+	bootchart.tgz
+
+执行[compare-bootcharts.py](./compare-bootcharts.py)脚本,得到对比结果,其中添加一个名为user_specify_process的进程
+
+	$ ./compare-bootcharts.py base_bootchart_dir exp_bootchart_dir
