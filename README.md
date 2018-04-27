@@ -215,3 +215,39 @@ PC机上操作
 内核中POWER对应的android的键值KEYCODE_POWER
 
 	input  keyevent KEYCODE_POWER        //26
+
+## 命令行操作执行OTA升级
+
+将生成的ota包放到/cache/update.zip后执行如下命令
+
+	echo -e "--update_package=CACHE:update.zip" > /cache/recovery/command
+	reboot recovery
+
+### OTA差分包制作
+
+发布pre版本的固件,生成pre版本的ota完整包
+
+	make otapackage
+
+保存pre版本的基础素材
+
+	cp out/target/product/rk3288/obj/PACKAGING/target_files_intermediates/rk3288-target_files-user.gentoo.20171009.110038.zip target_files-pre.zip
+
+修改代码...
+
+发布cur版本的固件,生成cur版本的ota完整包
+
+	make otapackage
+
+保存cur版本的基础素材
+
+	cp out/target/product/rk3288/obj/PACKAGING/target_files_intermediates/rk3288-target_files-user.gentoo.20171009.112455.zip target_files-cur.zip
+
+生成pre和cur的差异升级包
+
+./build/tools/releasetools/ota_from_target_files -v -i rk3288-target_files-pre.zip -p out/host/linux-x86 -k build/target/product/security/testkey rk3288-target_files-cur.zip out/target/product/rk3288/rk3288_OTA_DIFF.zip
+
+将rk3288_OTA_DIFF.zip放到/cache/update_diff.zip后执行如下命令
+
+	echo -e "--update_package=CACHE:update_diff.zip" > /cache/recovery/command
+	reboot recovery
