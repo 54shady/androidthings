@@ -269,3 +269,9 @@ PC机上操作
 以后就可以用adb来启动这个apk
 
 	am start -n com.android.camera2/com.android.camera.CameraActivity
+
+## 命令行恢复出厂设置
+
+命令行恢复出厂设置
+
+	am broadcast -a android.intent.action.MASTER_CLEAR
