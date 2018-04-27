@@ -102,3 +102,17 @@ android中将这个动态库编程封装为hw_get_module
 		*device = &led_dev;
 		return 0;
 	}
+
+## APK签名
+
+[参考文章 APK使用系统签名](https://www.jianshu.com/p/63d699cffa1a)
+
+- 找到平台签名文件"platform.pk8"和"platform.x509.pem",文件位置android/build/target/product/security/
+- 签名工具"signapk.jar"在android/prebuilts/sdk/tools/lib
+- 签名证书"platform.pk8" "platform.x509.pem",签名工具"signapk.jar"放置在同一个文件夹
+- 执行如下命令
+	java -jar signapk.jar platform.x509.pem platform.pk8 Demo.apk signedDemo.apk
+
+或者直接在编译环境执行
+
+	java -jar out/host/linux-x86/framework/signapk.jar build/target/product/security/platform.x509.pem build/target/product/security/platform.pk8 input.apk output.apk
