@@ -251,3 +251,21 @@ PC机上操作
 
 	echo -e "--update_package=CACHE:update_diff.zip" > /cache/recovery/command
 	reboot recovery
+
+## 使用am命令启动apk
+
+首先用下面这个命令查出APK名字
+
+	dumpsys window w | grep \/ | grep name=
+
+比如现在打开摄像头apk后
+
+	dumpsys window w | grep \/ | grep name=
+
+输出结果如下
+
+	mSurface=Surface(name=com.android.camera2/com.android.camera.CameraActivity)
+
+以后就可以用adb来启动这个apk
+
+	am start -n com.android.camera2/com.android.camera.CameraActivity
