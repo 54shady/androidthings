@@ -217,6 +217,34 @@ else:
 common.ZipWriteStr(output_zip, "META-INF/com/google/android/update-binary",
 				   data, perms=0o755)
 ```
+
+### 系统文件更新
+
+正常启动的系统init.rc中定义了一个用于烧写recovery分区的服务,也就是执行install-recovery.sh,每次启动都要执行一次
+
+```shell
+service flash_recovery /system/bin/install-recovery.sh
+    class main
+    seclabel u:r:install_recovery:s0
+    oneshot
+```
+
+install-recovery.sh是recovery模式中updater-script解压出来的,内容如下
+```shell
+#!/system/bin/sh
+if ! applypatch -c
+MTD:recovery:46923776:1c4f93c80e114f152d0a41c8a392b963a79f9015; then
+  applypatch -b /system/etc/recovery-resource.dat
+MTD:boot:15646720:11cafa010c1093e779e1dda8382758edac16317d MTD:recovery
+1c4f93c80e114f152d0a41c8a392b963a79f9015 46923776
+11cafa010c1093e779e1dda8382758edac16317d:/system/recovery-from-boot.p && log -t
+recovery "Installing new recovery image: succeeded" || log -t recovery
+"Installing new recovery image: failed"
+else
+  log -t recovery "Recovery image already installed"
+fi
+```
+
 ## 自定义更新文件
 
 以RK为例,需要更新RK的Loader和parameter文件
@@ -235,6 +263,7 @@ common.ZipWriteStr(output_zip, "META-INF/com/google/android/update-binary",
 			$(INSTALLED_PARAMETER_TARGET) \
 
 将文件拷贝到zip_root下
+
 ```make
 ifeq ($(INSTALLED_LOADER_TARGET),)
 	$(info No RK Loader for TARGET_DEVICE $(TARGET_DEVICE) to otapackage)
@@ -260,17 +289,17 @@ endif
 
 	$(hide) if test -e $(tool_extensions)/releasetools.py; then $(ACP) $(tool_extensions)/releasetools.py $(zip_root)/META/; fi
 
-
 该脚本由RK提供在目录device/rockchip/common/releasetools.py
+
 ```make
 ifeq ($(TARGET_RELEASETOOLS_EXTENSIONS),)
-# default to common dir for device vendor
 $(BUILT_TARGET_FILES_PACKAGE): tool_extensions := $(TARGET_DEVICE_DIR)/../common
 else
 $(BUILT_TARGET_FILES_PACKAGE): tool_extensions :=
 $(TARGET_RELEASETOOLS_EXTENSIONS)
 endif
 ```
+
 通过脚本中下面两个函数来生成相应脚本
 ```python
 def Install_Parameter(info):
