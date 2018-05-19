@@ -1,5 +1,9 @@
 # Android核心
 
+## Recovery and OTA
+
+[recovery system and ota](./ota_update.md)
+
 ## Binder系统
 
 [Android Binder系统分析](./binder)
