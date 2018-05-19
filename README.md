@@ -2,7 +2,7 @@
 
 ## Recovery and OTA
 
-[recovery system and ota](./ota_update.md)
+[Recovery system and OTA](./ota_update.md)
 
 ## Binder系统
 

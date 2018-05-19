@@ -2,7 +2,7 @@
 
 [参考文章: OTA制作及升级过程笔记](https://blog.csdn.net/teliduxing1029/article/details/51536560)
 
-[Rockchip Recovery OTA用户操作指南V1.01](./Rockchip_Recovery_OTA.pdf)
+[参考文档: Rockchip Recovery OTA用户操作指南V1.01](./rockchip_recovery_ota.pdf)
 
 ## Android Recovery三个部分两个接口
 
@@ -44,45 +44,45 @@ Recovery时,会清除这个字段的值,防止重启时再次进入Recovery模�
 	make otapackage
 
 build/core/Makefile中定义如下
+```make
+INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
 
-	INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
+$(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
 
-	$(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
+$(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+	@echo "Package OTA: $@"
+	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH
+MKBOOTIMG=$(MKBOOTIMG) \
+	   ./build/tools/releasetools/ota_from_target_files -v \
+	   -p $(HOST_OUT) \
+	   -k $(KEY_CERT_PAIR) \
+	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
+	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
-	$(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
-		@echo "Package OTA: $@"
-		$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH
-	MKBOOTIMG=$(MKBOOTIMG) \
-		   ./build/tools/releasetools/ota_from_target_files -v \
-		   -p $(HOST_OUT) \
-		   -k $(KEY_CERT_PAIR) \
-		   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
-		   $(BUILT_TARGET_FILES_PACKAGE) $@
-
-	.PHONY: otapackage
-	otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
-
+.PHONY: otapackage
+otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+```
 可知otapackage依赖是INTERNAL_OTA_PACKAGE_TARGET
 
 INTERNAL_OTA_PACKAGE_TARGET依赖是KEY和BUILT_TARGET_FILES_PACKAGE, DISTTOOLS
 
 DISTTOOLS依赖是一些工具和库文件
+```make
+DISTTOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
+  $(HOST_OUT_EXECUTABLES)/mkbootfs \
+  $(HOST_OUT_EXECUTABLES)/mkbootimg \
+  $(HOST_OUT_EXECUTABLES)/fs_config \
+  $(HOST_OUT_EXECUTABLES)/zipalign \
+  $(HOST_OUT_EXECUTABLES)/bsdiff \
+  $(HOST_OUT_EXECUTABLES)/imgdiff \
+	...
 
-	DISTTOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
-	  $(HOST_OUT_EXECUTABLES)/mkbootfs \
-	  $(HOST_OUT_EXECUTABLES)/mkbootimg \
-	  $(HOST_OUT_EXECUTABLES)/fs_config \
-	  $(HOST_OUT_EXECUTABLES)/zipalign \
-	  $(HOST_OUT_EXECUTABLES)/bsdiff \
-	  $(HOST_OUT_EXECUTABLES)/imgdiff \
-		...
-
-	DISTTOOLS += \
-	  $(HOST_LIBRARY_PATH)/libc++$(HOST_SHLIB_SUFFIX) \
-	  $(HOST_LIBRARY_PATH)/liblog$(HOST_SHLIB_SUFFIX) \
-	  $(HOST_LIBRARY_PATH)/libcutils$(HOST_SHLIB_SUFFIX) \
-		...
-
+DISTTOOLS += \
+  $(HOST_LIBRARY_PATH)/libc++$(HOST_SHLIB_SUFFIX) \
+  $(HOST_LIBRARY_PATH)/liblog$(HOST_SHLIB_SUFFIX) \
+  $(HOST_LIBRARY_PATH)/libcutils$(HOST_SHLIB_SUFFIX) \
+	...
+```
 BUILT_TARGET_FILES_PACKAGE的目的是编译出所有资源包并将其打包zip文件
 
 ### 资源包ziproot
@@ -127,6 +127,36 @@ recovery中升级操作流程
 
 ### updater-script
 
+updater-script的生成流程(build/core/Makefile)
+
+```make
+$(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+    @echo "Package OTA: $@"
+    $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH
+MKBOOTIMG=$(MKBOOTIMG) \
+       ./build/tools/releasetools/ota_from_target_files -v \
+       -p $(HOST_OUT) \
+       -k $(KEY_CERT_PAIR) \
+       $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
+       $(BUILT_TARGET_FILES_PACKAGE) $@
+
+.PHONY: otapackage
+otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+```
+Makefile中会调用ota_from_target_files来生成相关文件
+
+在ota_from_target_files脚本中尝试读入releasetools.py文件(这个文件是vendor的)
+如果平台有相关文件就用平台提供的,无的话就用android原生目录下的工具
+```python
+if OPTIONS.device_specific is None:
+from_input = os.path.join(OPTIONS.input_tmp, "META", "releasetools.py")
+if os.path.exists(from_input):
+  print "(using device-specific extensions from target_files)"
+  OPTIONS.device_specific = from_input
+else:
+  OPTIONS.device_specific = OPTIONS.info_dict.get("tool_extensions", None)
+```
+
 其中updater-script脚本内容大致如下
 
 	getprop("ro.product.device")
@@ -168,24 +198,25 @@ recovery执行update-binary代码调用流程
 
 build/tools/releasetools/edify_generator.py中将打包update-binary和updater-script到zip文件中
 
-	def AddToZip(self, input_zip, output_zip, input_path=None):
-	"""Write the accumulated script to the output_zip file.  input_zip
-	is used as the source for the 'updater' binary needed to run
-	script.  If input_path is not None, it will be used as a local
-	path for the binary instead of input_zip."""
+```python
+def AddToZip(self, input_zip, output_zip, input_path=None):
+"""Write the accumulated script to the output_zip file.  input_zip
+is used as the source for the 'updater' binary needed to run
+script.  If input_path is not None, it will be used as a local
+path for the binary instead of input_zip."""
 
-	self.UnmountAll()
+self.UnmountAll()
 
-	common.ZipWriteStr(output_zip, "META-INF/com/google/android/updater-script",
-					   "\n".join(self.script) + "\n")
+common.ZipWriteStr(output_zip, "META-INF/com/google/android/updater-script",
+				   "\n".join(self.script) + "\n")
 
-	if input_path is None:
-	  data = input_zip.read("OTA/bin/updater")
-	else:
-	  data = open(input_path, "rb").read()
-	common.ZipWriteStr(output_zip, "META-INF/com/google/android/update-binary",
-					   data, perms=0o755)
-
+if input_path is None:
+  data = input_zip.read("OTA/bin/updater")
+else:
+  data = open(input_path, "rb").read()
+common.ZipWriteStr(output_zip, "META-INF/com/google/android/update-binary",
+				   data, perms=0o755)
+```
 ## 自定义更新文件
 
 以RK为例,需要更新RK的Loader和parameter文件
@@ -204,25 +235,26 @@ build/tools/releasetools/edify_generator.py中将打包update-binary和updater-s
 			$(INSTALLED_PARAMETER_TARGET) \
 
 将文件拷贝到zip_root下
-
-	ifeq ($(INSTALLED_LOADER_TARGET),)
-		$(info No RK Loader for TARGET_DEVICE $(TARGET_DEVICE) to otapackage)
-	else
-		@# Contents of the rk loader bin
-		$(hide) mkdir -p $(zip_root)/LOADER
-		$(hide) $(HOST_OUT_EXECUTABLES)/remkloader '$(INSTALLED_LOADER_TARGET)'
-	$(INSTALLED_NEW_LOADER_TARGET)
-		$(hide) cat $(INSTALLED_LOADER_MISC_TARGET) $(INSTALLED_NEW_LOADER_TARGET) >
-	$(zip_root)/LOADER/RKLoader.img
-	endif
-	ifeq ($(INSTALLED_PARAMETER_TARGET),)
-		$(info No parameter for TARGET_DEVICE $(TARGET_DEVICE) to otapackage)
-	else
-		$(hide) rm -rf $(zip_root)/PARAMETER
-		$(hide) mkdir -p $(zip_root)/PARAMETER
-		$(hide) $(HOST_OUT_EXECUTABLES)/mkparameter '$(INSTALLED_PARAMETER_TARGET)'
-	$(zip_root)/PARAMETER/parameter
-	endif
+```make
+ifeq ($(INSTALLED_LOADER_TARGET),)
+	$(info No RK Loader for TARGET_DEVICE $(TARGET_DEVICE) to otapackage)
+else
+	@# Contents of the rk loader bin
+	$(hide) mkdir -p $(zip_root)/LOADER
+	$(hide) $(HOST_OUT_EXECUTABLES)/remkloader '$(INSTALLED_LOADER_TARGET)'
+$(INSTALLED_NEW_LOADER_TARGET)
+	$(hide) cat $(INSTALLED_LOADER_MISC_TARGET) $(INSTALLED_NEW_LOADER_TARGET) >
+$(zip_root)/LOADER/RKLoader.img
+endif
+ifeq ($(INSTALLED_PARAMETER_TARGET),)
+	$(info No parameter for TARGET_DEVICE $(TARGET_DEVICE) to otapackage)
+else
+	$(hide) rm -rf $(zip_root)/PARAMETER
+	$(hide) mkdir -p $(zip_root)/PARAMETER
+	$(hide) $(HOST_OUT_EXECUTABLES)/mkparameter '$(INSTALLED_PARAMETER_TARGET)'
+$(zip_root)/PARAMETER/parameter
+endif
+```
 
 这样在编译出来的目录就会有相应的文件,使用自定义的脚本操作
 
@@ -230,35 +262,35 @@ build/tools/releasetools/edify_generator.py中将打包update-binary和updater-s
 
 
 该脚本由RK提供在目录device/rockchip/common/releasetools.py
-
-	ifeq ($(TARGET_RELEASETOOLS_EXTENSIONS),)
-	# default to common dir for device vendor
-	$(BUILT_TARGET_FILES_PACKAGE): tool_extensions := $(TARGET_DEVICE_DIR)/../common
-	else
-	$(BUILT_TARGET_FILES_PACKAGE): tool_extensions :=
-	$(TARGET_RELEASETOOLS_EXTENSIONS)
-	endif
-
+```make
+ifeq ($(TARGET_RELEASETOOLS_EXTENSIONS),)
+# default to common dir for device vendor
+$(BUILT_TARGET_FILES_PACKAGE): tool_extensions := $(TARGET_DEVICE_DIR)/../common
+else
+$(BUILT_TARGET_FILES_PACKAGE): tool_extensions :=
+$(TARGET_RELEASETOOLS_EXTENSIONS)
+endif
+```
 通过脚本中下面两个函数来生成相应脚本
+```python
+def Install_Parameter(info):
+  try:
+	parameter_bin = info.input_zip.read("PARAMETER/parameter");
+  except KeyError:
+	print "warning: no parameter in input target_files; not flashing parameter"
+	return
 
-	def Install_Parameter(info):
-	  try:
-		parameter_bin = info.input_zip.read("PARAMETER/parameter");
-	  except KeyError:
-		print "warning: no parameter in input target_files; not flashing parameter"
-		return
+  print "find parameter, should add to package"
+  common.ZipWriteStr(info.output_zip, "parameter", parameter_bin)
+  info.script.Print("start update parameter...")
+  info.script.WriteRawParameterImage("/parameter", "parameter")
+  info.script.Print("end update parameter")
 
-	  print "find parameter, should add to package"
-	  common.ZipWriteStr(info.output_zip, "parameter", parameter_bin)
-	  info.script.Print("start update parameter...")
-	  info.script.WriteRawParameterImage("/parameter", "parameter")
-	  info.script.Print("end update parameter")
-
-	def InstallRKLoader(loader_bin, input_zip, info):
-	  common.ZipWriteStr(info.output_zip, "RKLoader.img", loader_bin)
-	  info.script.Print("Writing rk loader bin...")
-	  info.script.WriteRawImage("/misc", "RKLoader.img")
-
+def InstallRKLoader(loader_bin, input_zip, info):
+  common.ZipWriteStr(info.output_zip, "RKLoader.img", loader_bin)
+  info.script.Print("Writing rk loader bin...")
+  info.script.WriteRawImage("/misc", "RKLoader.img")
+```
 对应脚本中内容如下
 
 	write_raw_image(package_extract_file("RKLoader.img"), "misc");// 将loader写入misc分区
