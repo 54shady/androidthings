@@ -279,3 +279,11 @@ PC机上操作
 命令行恢复出厂设置
 
 	am broadcast -a android.intent.action.MASTER_CLEAR
+
+## android doc
+
+android文档位于docs/source.android.com
+
+在源码目下编译android docs(输出路径out/target/common/docs/online-sac)
+
+	make online-sac-docs
