@@ -1,5 +1,9 @@
 # Android核心
 
+## Android源代码REPO工程搭建
+
+[Android Source Code Repo](./repo.md)
+
 ## Recovery and OTA
 
 [Recovery system and OTA](./ota_update.md)
