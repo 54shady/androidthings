@@ -2,13 +2,19 @@
 
 [参考文章:把已有的repo工程提交到服务器](http://nicekwell.net/blog/20171112/ba-yi-you-de-repogong-cheng-ti-jiao-dao-fu-wu-qi.html)
 
+### 服务器配置环境简单介绍
+
+- 服务器A 172.1.2.8用于存放repo的元数据,进行代码托管
+- 服务器B 172.1.2.7用于操作服务器A上的元数据(也可以在A上直接操作)
+- 客户端C 172.1.2.6是正常使用的客户端,普通开发用户
+
 ## manifest.xml文件介绍
 
 ### manifest中头部会有如下信息(原始内容如下)
 
-- remote表示原厂仓库,可以写多个
-- default 表示使用默认同步远程哪个仓库
-- revision表示原厂仓库的分支或标签
+- remote表示远程仓库,可以写多个
+- default表示使用默认同步远程哪个仓库和分支
+- revision表示远程仓库(manifest)的分支或标签
 - sync-j指定同步线程数
 
 ```xml
@@ -56,6 +62,7 @@
 
 拷贝当前的manifests文件到manifest目录中(172.1.2.7)
 
+	cd rk3288_mid_7.1_180613/
 	git clone ssh://172.1.2.8:/home/anonymous/androidprj/manifest.git
 	cp .repo/manifests/rk3288_tablet_nougat_release.xml manifest/default.xml
 
@@ -108,6 +115,8 @@
 
 或是将REPO_URL写在repo脚本中(/usr/bin/repo)就不需要后面指定url
 
+其中--repo-url指定的是下载repo工具的所有源代码的地址(本地的repo只是一个引导文件)
+
 ```python
 import os
 REPO_URL = os.environ.get('REPO_URL', None)
@@ -117,6 +126,67 @@ REPO_REV = 'stable'
 ```
 
 修改后下载命令
+
+	repo init -u anonymous@172.1.2.8:/home/anonymous/androidprj/manifest.git
+	repo sync
+
+## Repo新建分支,重复利用代码
+
+新建一个分支,定制需要的工程(project),比如只要kernel
+
+在(172.1.2.7)客户端上操作,给manifest里添加一个分支假设名叫kernel_only
+
+	cd rk3288_mid_7.1_180613/manifest
+	git checkout -b kernel_only
+
+修改default.xml内容如下,只保留一个project(kernel)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+	<remote fetch="ssh://git@www.rockchip.com.cn/gerrit/" name="aosp"/>
+	<remote fetch="ssh://git@www.rockchip.com.cn/gerrit/" name="rk"/>
+	<remote fetch="ssh://anonymous@172.1.2.8:/home/anonymous/androidprj/" name="myrkrepo"/>
+	<default remote="myrkrepo" revision="kernel_only" sync-j="24"/>
+	<project name="rk/kernel" path="kernel"/>
+</manifest>
+```
+
+在(172.1.2.7)客户端上操作,提交manifest
+
+	git push origin kernel_only:kernel_only
+
+在(172.1.2.7)上提交相应工程(和manifest里project name一致,比如这里的rk/kernel)
+
+	cd kernel
+	rm -rf .git && git init && git remote add origin anonymous@172.1.2.8:/home/anonymous/androidprj/rk/kernel && git add . -f && git commit -m "init"
+	git push -u origin master:kernel_only
+
+在(172.1.2.6)客户端下载代码
+
+	repo init -u anonymous@172.1.2.8:/home/anonymous/androidprj/manifest.git -b kernel_only
+	repo sync
+
+## 修改Repo manifest文件内容达到控制工程
+
+在(172.1.2.7)客户端上操作,修改manifest的master分支内容如下
+删除不需要工程后,假设只保留了RKDocs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+	<remote fetch="ssh://git@www.rockchip.com.cn/gerrit/" name="aosp"/>
+	<remote fetch="ssh://git@www.rockchip.com.cn/gerrit/" name="rk"/>
+	<remote fetch="ssh://anonymous@172.1.2.8:/home/anonymous/androidprj/" name="myrkrepo"/>
+	<default remote="myrkrepo" revision="master" sync-j="24"/>
+	<project name="android/RKDocs" path="RKDocs"/>
+</manifest>
+```
+
+在(172.1.2.7)上将修改好的文件更新到服务器上
+
+	cd rk3288_mid_7.1_180613/manifest
+	git push
+
+此时客户端(172.1.2.6)更新代码就只有doc了,本地原有的代码将被删除
 
 	repo init -u anonymous@172.1.2.8:/home/anonymous/androidprj/manifest.git
 	repo sync
