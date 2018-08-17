@@ -8,6 +8,10 @@
 
 [Recovery system and OTA](./ota_update.md)
 
+## Android NDK
+
+[Android NDK 使用](./ndk.md)
+
 ## Binder系统
 
 [Android Binder系统分析](./binder)
