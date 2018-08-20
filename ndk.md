@@ -46,6 +46,18 @@
 
 	iperf3 -c 192.168.1.103 -t 100 -w 512k -f M
 
+### 使用android编译系统编译iperf3(不用NDK编译iperf3)
+
+[使用Android.mk for iperf编译](./iperf_Android.mk)
+
+修改代码(iperf-3.1.3/src/net.c)
+
+	将#include <sys/fcntl.h>修改为#include <fcntl.h>
+
+拷贝iperf-3.1.3/src代码到android/external/iperf
+
+	cp iperf-3.1.3/src external/iperf
+
 ## 使用NDK编译libusb里的测试代码
 
 下载最新NDK,解压后设置解压路径
