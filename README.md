@@ -1,5 +1,41 @@
 # Android核心
 
+## Android UID GID
+
+在安卓系统中uid和gid配置的文件如下
+
+	system/core/include/private/android_filesystem_config.h
+
+其内容大致如下
+
+	#define AID_ROOT             0  /* traditional unix root user */
+	#define AID_SYSTEM        1000  /* system server */
+	#define AID_RADIO         1001  /* telephony subsystem, RIL */
+
+执行ps得到的结果如下
+
+	u0_a13    966   185   981108 109332    ep_poll b6d4bbfc S com.android.systemui
+	u0_a6     980   185   935876 62116    ep_poll b6d4bbfc S com.android.launcher3
+	u0_a42    994   185   884348 25724    ep_poll b6d4bbfc S com.android.printspooler
+	u0_a2     1038  185   888416 33404    ep_poll b6d4bbfc S android.process.acore
+	u0_a47    1152  185   881896 25080    ep_poll b6d4bbfc S com.android.smspush
+
+执行busybox ps得到的结果如下
+
+	966 10013     958m S    com.android.systemui
+	980 10006     913m S    com.android.launcher3
+	994 10042     863m S    com.android.printspooler
+
+其中第一列的值是通过(bionic/libc/bionic/stubs.cpp)中的如下函数得到的
+
+	// Translate a user/group name to the corresponding user/group id.
+	// all_a1234 -> 0 * AID_USER + AID_SHARED_GID_START + 1234 (group name only)
+	// u0_a1234 -> 0 * AID_USER + AID_APP + 1234
+	// u2_i1000 -> 2 * AID_USER + AID_ISOLATED_START + 1000
+	// u1_system -> 1 * AID_USER + android_ids['system']
+	// returns 0 and sets errno to ENOENT in case of error
+	static id_t app_id_from_name(const char* name, bool is_group) {
+
 ## Android源代码REPO工程搭建
 
 [Android Source Code Repo](./repo.md)
