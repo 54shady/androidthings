@@ -564,3 +564,21 @@ err_end:
 	return err;
 }
 ```
+
+## 查看某个应用软件gpu使用情况
+
+先要获取应用软件包名
+
+	pm list package -3
+
+	-3 表示第三方应用(即用户自行安装的应用)
+	-s 表示系统应用
+	-3可省,列出设备所有包名
+
+比如下面的包名对应的就是bilibili
+
+	package:tv.danmaku.bili
+
+然后查看该包使用的gpu情况
+
+	dumpsys gfxinfo tv.danmaku.bili
